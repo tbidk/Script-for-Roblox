@@ -8,8 +8,8 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- Settings
-local CLICK_INTERVAL = 1 / 5
-local autoClickEnabled = false
+local CLICK_INTERVAL = 1 / 500
+local autoClickEnabled = True
 local guiLogicEnabled = true
 local lastClickTime = 0
 
@@ -54,7 +54,7 @@ end)
 -- Simulated click function
 local function simulateHit()
 	if tick() - lastClickTime >= CLICK_INTERVAL then
-		lastClickTime = tick()
+		lastClickTime = tick(1)
 
 		local remote = LocalPlayer:FindFirstChild("RemoteEvent") or (Character and Character:FindFirstChild("RemoteEvent"))
 		if remote then
