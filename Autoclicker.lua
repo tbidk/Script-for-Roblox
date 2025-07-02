@@ -1,129 +1,76 @@
+-- Auto Parry + GUI Manual Blocker (300x/sec toggleable)
+-- Developed for educational use only
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+-- Settings
+local AUTO_PARRY_DISTANCE = 15
+local BLOCK_INTERVAL = 1 / 300
+local TOGGLE_KEY = Enum.KeyCode.B
 
--- Create ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AutoBlockGui"
-screenGui.Parent = playerGui
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+screenGui.Name = "BlockToggleGui"
 
--- Create Toggle Button
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 120, 0, 50)
-toggleButton.Position = UDim2.new(0, 20, 0, 100) -- Start near top-left
-toggleButton.BackgroundColor3 = Color3.new(0, 0, 0) -- Black background
-toggleButton.TextColor3 = Color3.new(1, 1, 1) -- White text
-toggleButton.Font = Enum.Font.SourceSansBold
-toggleButton.TextSize = 28
-toggleButton.Text = "Off"
-toggleButton.Parent = screenGui
-toggleButton.AutoButtonColor = false
+local toggleLabel = Instance.new("TextLabel", screenGui)
+toggleLabel.Size = UDim2.new(0, 200, 0, 50)
+toggleLabel.Position = UDim2.new(0, 20, 0, 20)
+toggleLabel.Text = "Manual Block: OFF"
+toggleLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+toggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleLabel.Font = Enum.Font.SourceSansBold
+toggleLabel.TextSize = 24
 
--- Variables for dragging
-local dragging = false
-local dragInput = nil
-local dragStart = nil
-local startPos = nil
-
-local function updatePosition(input)
-    local delta = input.Position - dragStart
-    local newPos = UDim2.new(
-        0,
-        math.clamp(startPos.X.Offset + delta.X, 0, playerGui.AbsoluteSize.X - toggleButton.AbsoluteSize.X),
-        0,
-        math.clamp(startPos.Y.Offset + delta.Y, 0, playerGui.AbsoluteSize.Y - toggleButton.AbsoluteSize.Y)
-    )
-    toggleButton.Position = newPos
-end
-
-toggleButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = toggleButton.Position
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
+-- Auto Parry Logic
+local function autoParry()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name:lower():find("ball") then
+            if (obj.Position - HumanoidRootPart.Position).Magnitude <= AUTO_PARRY_DISTANCE then
+                local parry = LocalPlayer:FindFirstChild("Parry") or LocalPlayer.Character:FindFirstChild("Parry")
+                if parry and typeof(parry) == "BindableEvent" then
+                    parry:Fire()
+                elseif LocalPlayer:FindFirstChild("RemoteEvent") then
+                    LocalPlayer.RemoteEvent:FireServer("Parry")
+                end
             end
-        end)
-    end
-end)
-
-toggleButton.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        updatePosition(input)
-    end
-end)
-
--- Auto-block logic
-local autoBlocking = false
-local connection
-
-local blocksThisSecond = 0
-
--- Replace with your actual block event name
-local blockEvent = game:GetService("ReplicatedStorage"):WaitForChild("BlockEvent")
-
-local function performBlock()
-    blockEvent:FireServer()
-    blocksThisSecond = blocksThisSecond + 1
-end
-
-local function startAutoBlock()
-    blocksThisSecond = 0
-    print("Auto-block started")
-    connection = RunService.Heartbeat:Connect(function()
-        local blocksPerFrame = 300 / 60
-        for i = 1, math.floor(blocksPerFrame) do
-            performBlock()
         end
-        if math.random() < (blocksPerFrame - math.floor(blocksPerFrame)) then
-            performBlock()
+    end
+end
+
+-- Manual Block Logic
+local manualBlockOn = false
+local lastBlockTime = 0
+
+local function manualBlock()
+    if tick() - lastBlockTime >= BLOCK_INTERVAL then
+        lastBlockTime = tick()
+        local block = LocalPlayer:FindFirstChild("Block") or LocalPlayer.Character:FindFirstChild("Block")
+        if block and typeof(block) == "BindableEvent" then
+            block:Fire()
+        elseif LocalPlayer:FindFirstChild("RemoteEvent") then
+            LocalPlayer.RemoteEvent:FireServer("Block")
         end
-    end)
-end
-
-local function stopAutoBlock()
-    if connection then
-        connection:Disconnect()
-        connection = nil
-    end
-    print("Auto-block stopped")
-end
-
-local function updateButtonAppearance()
-    if autoBlocking then
-        toggleButton.Text = "On"
-        toggleButton.BackgroundColor3 = Color3.new(0, 0, 0) -- Black
-        toggleButton.TextColor3 = Color3.new(1, 1, 1) -- White
-    else
-        toggleButton.Text = "Off"
-        toggleButton.BackgroundColor3 = Color3.new(0, 0, 0) -- Black
-        toggleButton.TextColor3 = Color3.new(1, 1, 1) -- White
     end
 end
 
--- Initialize
-autoBlocking = false
-updateButtonAppearance()
-
-toggleButton.MouseButton1Click:Connect(function()
-    autoBlocking = not autoBlocking
-    if autoBlocking then
-        startAutoBlock()
-    else
-        stopAutoBlock()
+-- Toggle Input
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == TOGGLE_KEY then
+        manualBlockOn = not manualBlockOn
+        toggleLabel.Text = "Manual Block: " .. (manualBlockOn and "ON" or "OFF")
+        toggleLabel.TextColor3 = manualBlockOn and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
     end
-    updateButtonAppearance()
 end)
 
+-- Main Loop
+RunService.RenderStepped:Connect(function()
+    autoParry()
+    if manualBlockOn then
+        manualBlock()
+    end
+end)
