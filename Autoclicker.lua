@@ -8,7 +8,7 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- Settings
-local CLICK_INTERVAL = 1 / 300
+local CLICK_INTERVAL = 1 / 5
 local autoClickEnabled = false
 local guiLogicEnabled = true
 local lastClickTime = 0
