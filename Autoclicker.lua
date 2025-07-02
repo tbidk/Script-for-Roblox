@@ -22,18 +22,21 @@ toggleButton.Text = "Off"
 toggleButton.Parent = screenGui
 toggleButton.AutoButtonColor = false
 
--- Make the button draggable for touch (mobile) and mouse
+-- Variables for dragging
 local dragging = false
-local dragInput, dragStart, startPos
+local dragInput = nil
+local dragStart = nil
+local startPos = nil
 
 local function updatePosition(input)
     local delta = input.Position - dragStart
-    toggleButton.Position = UDim2.new(
+    local newPos = UDim2.new(
         0,
         math.clamp(startPos.X.Offset + delta.X, 0, playerGui.AbsoluteSize.X - toggleButton.AbsoluteSize.X),
         0,
         math.clamp(startPos.Y.Offset + delta.Y, 0, playerGui.AbsoluteSize.Y - toggleButton.AbsoluteSize.Y)
     )
+    toggleButton.Position = newPos
 end
 
 toggleButton.InputBegan:Connect(function(input)
@@ -78,7 +81,7 @@ end
 
 local function startAutoBlock()
     blocksThisSecond = 0
-
+    print("Auto-block started")
     connection = RunService.Heartbeat:Connect(function()
         local blocksPerFrame = 300 / 60
         for i = 1, math.floor(blocksPerFrame) do
@@ -88,8 +91,6 @@ local function startAutoBlock()
             performBlock()
         end
     end)
-
-    -- Optional: You can add CPS display or other feedback here if desired
 end
 
 local function stopAutoBlock()
@@ -97,6 +98,7 @@ local function stopAutoBlock()
         connection:Disconnect()
         connection = nil
     end
+    print("Auto-block stopped")
 end
 
 local function updateButtonAppearance()
@@ -124,3 +126,4 @@ toggleButton.MouseButton1Click:Connect(function()
     end
     updateButtonAppearance()
 end)
+
